@@ -4,7 +4,7 @@ API REST (Node.js + Express) de uma plataforma com duas partes: um catálogo pes
 filmes, séries, animes e jogos (notas, reviews e listas) e um espaço de organização de
 ideias com quadros infinitos.
 
-- **Frontend:** https://github.com/SEU-USUARIO/catalogo-ideias-frontend
+- **Frontend:** https://github.com/DanielR6790/Caixaletra-backend
 - **Site publicado:** https://SEU-SITE.vercel.app
 - **API publicada:** https://SEU-BACKEND.onrender.com (teste: `/api/health`)
 
