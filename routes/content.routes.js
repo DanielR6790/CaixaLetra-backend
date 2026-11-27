@@ -106,6 +106,7 @@ const updateBody = z
     contentType: optionalText(60),
     coverUrl: coverField,
     status: z.enum(['para_consumir', 'consumido']).optional(),
+    isFavorite: z.boolean({ invalid_type_error: 'Valor inválido para favorito.' }).optional(),
   })
   .refine((data) => Object.values(data).some((value) => value !== undefined), {
     message: 'Nenhuma alteração informada.',

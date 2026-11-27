@@ -7,7 +7,7 @@ import { getContentDetails } from './searchService.js';
 
 const SELECT = `
   id, title, release_year, genre, description, cover_url, content_type,
-  source, external_id, status, consumed_at, added_at, updated_at,
+  source, external_id, status, is_favorite, consumed_at, added_at, updated_at,
   category:categories ( slug ),
   review:reviews ( id, rating, review_text, created_at, updated_at )
 `;
@@ -29,6 +29,7 @@ function toDto(row) {
     source: row.source,
     externalId: row.external_id,
     status: row.status,
+    isFavorite: Boolean(row.is_favorite),
     consumedAt: row.consumed_at,
     addedAt: row.added_at,
     updatedAt: row.updated_at,
@@ -195,6 +196,7 @@ export async function updateContent(supabase, id, patch) {
   if (patch.contentType !== undefined) row.content_type = patch.contentType;
   if (patch.coverUrl !== undefined) row.cover_url = patch.coverUrl;
   if (patch.status !== undefined) row.status = patch.status;
+  if (patch.isFavorite !== undefined) row.is_favorite = patch.isFavorite;
 
   // Lê a obra atual quando for mexer na capa ou no ano (precisa comparar com o valor atual)
   let current = null;
