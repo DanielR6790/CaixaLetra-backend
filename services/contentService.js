@@ -3,6 +3,7 @@
 // então o RLS do banco garante que cada um só mexe nos próprios dados.
 import { AppError } from '../utils/AppError.js';
 import { assertNoError } from '../utils/db.js';
+import { getContentDetails } from './searchService.js';
 
 const SELECT = `
   id, title, release_year, genre, description, cover_url, content_type,
@@ -81,8 +82,6 @@ export async function listContents(supabase, categorySlug) {
 }
 
 // Obras manuais não têm ID externo, então comparamos título (sem diferenciar
-// maiúsculas) e ano dentro da mesma categoria.
-// Obras manuais não têm ID externo, então comparamos título (sem diferenciar
 // maiúsculas) e ano dentro da mesma categoria. A busca no banco pode trazer
 // candidatos a mais (o "*" funciona como curinga), por isso a comparação
 // final é feita aqui, pelo título exato.
@@ -106,12 +105,29 @@ async function assertNoManualDuplicate(supabase, categoryId, input) {
   }
 }
 
+// Obras vindas de uma API: o ano oficial é o da própria API, e não o que o site enviou.
+// Se a API não responder agora, vale o ano enviado (depois de salvo, o banco o trava).
+async function resolveReleaseYear(input) {
+  const sent = input.releaseYear ?? null;
+  if (input.source === 'manual') return sent;
+
+  try {
+    const official = await getContentDetails({ category: input.categorySlug, id: input.externalId });
+    return official?.year ?? sent;
+  } catch (error) {
+    console.warn('[contents] Não foi possível confirmar o ano na API:', error?.message);
+    return sent;
+  }
+}
+
 export async function createContent(supabase, userId, input) {
   const categoryId = await getCategoryId(supabase, input.categorySlug);
 
   if (input.source === 'manual') {
     await assertNoManualDuplicate(supabase, categoryId, input);
   }
+
+  const releaseYear = await resolveReleaseYear(input);
 
   // Obra avaliada nasce como "consumido"; ao criar a review, o banco
   // (gatilho) muda o status para "avaliado".
@@ -121,7 +137,7 @@ export async function createContent(supabase, userId, input) {
       user_id: userId,
       category_id: categoryId,
       title: input.title,
-      release_year: input.releaseYear ?? null,
+      release_year: releaseYear,
       genre: input.genre ?? null,
       description: input.description ?? null,
       cover_url: input.coverUrl ?? null,
@@ -180,17 +196,32 @@ export async function updateContent(supabase, id, patch) {
   if (patch.coverUrl !== undefined) row.cover_url = patch.coverUrl;
   if (patch.status !== undefined) row.status = patch.status;
 
-  // Guarda a capa atual para apagá-la do Storage se for substituída
-  let previousCover = null;
-  if (patch.coverUrl !== undefined) {
-    const { data: current, error: readError } = await supabase
+  // Lê a obra atual quando for mexer na capa ou no ano (precisa comparar com o valor atual)
+  let current = null;
+  if (patch.coverUrl !== undefined || patch.releaseYear !== undefined) {
+    const { data, error: readError } = await supabase
       .from('contents')
-      .select('cover_url')
+      .select('cover_url, source, release_year')
       .eq('id', id)
       .maybeSingle();
     assertNoError(readError, 'Não foi possível carregar a obra.');
-    previousCover = current?.cover_url ?? null;
+    current = data;
   }
+
+  // O ano oficial de uma obra de API não pode ser alterado
+  // (o banco também garante isso, mesmo em chamadas diretas)
+  if (patch.releaseYear !== undefined && current) {
+    const locked = current.source !== 'manual' && current.release_year !== null;
+    if (locked && patch.releaseYear !== current.release_year) {
+      throw new AppError(
+        'O ano de lançamento de obras encontradas nas APIs não pode ser alterado.',
+        409,
+        'FIELD_LOCKED'
+      );
+    }
+  }
+
+  const previousCover = current?.cover_url ?? null;
 
   let query = supabase.from('contents').update(row).eq('id', id);
   // Obras avaliadas mudam de status só pela avaliação, nunca pela caixa da lista

@@ -161,6 +161,13 @@ create index contents_user_title_idx           on public.contents (user_id, lowe
 create index contents_user_year_idx            on public.contents (user_id, release_year);
 
 -- Regras automáticas de proteção dos dados
+-- =====================================================================
+-- 001_lock_release_year.sql
+-- Obras vindas de uma API (source <> 'manual') não podem ter o ano de
+-- lançamento alterado, a menos que ele esteja vazio (aí pode ser preenchido).
+-- Substitui a função de gatilho existente (as permissões dela são mantidas).
+-- Pode rodar de novo sem problema.
+-- =====================================================================
 create or replace function public.contents_guard()
 returns trigger
 language plpgsql
@@ -173,6 +180,14 @@ begin
     -- Editar a obra ou a review nunca altera a data de adição nem o dono
     new.added_at := old.added_at;
     new.user_id  := old.user_id;
+
+    -- O ano de lançamento oficial de uma obra de API não pode ser alterado
+    if old.source <> 'manual'
+       and old.release_year is not null
+       and new.release_year is distinct from old.release_year then
+      raise exception 'O ano de lançamento de obras vindas de uma API não pode ser alterado.'
+        using errcode = 'check_violation';
+    end if;
   end if;
 
   -- Data em que foi marcado como consumido
