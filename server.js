@@ -37,7 +37,7 @@ app.use(express.json({ limit: '1mb' }));
 // Página de apresentação da API (quem abre o link do backend no navegador vê isto)
 app.get('/', (req, res) => {
   res.json({
-    name: 'API do catálogo e da organização de ideias',
+    name: 'API do CaixaLetra',
     status: 'online',
     health: '/api/health',
   });
