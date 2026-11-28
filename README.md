@@ -5,8 +5,8 @@ filmes, séries, animes e jogos (notas, reviews e listas) e um espaço de organi
 ideias com quadros infinitos.
 
 - **Frontend:** https://github.com/DanielR6790/Caixaletra-frontend
-- **Site publicado:** https://SEU-SITE.vercel.app
-- **API publicada:** https://SEU-BACKEND.onrender.com (teste: `/api/health`)
+- **Site publicado:** https://caixaletra.vercel.app/
+- **API publicada:**https://caixaletra-backend.onrender.com/ (teste: `/api/health`)
 
 > A API roda no plano gratuito do Render: depois de 15 minutos sem uso ela "dorme", e a
 > primeira requisição leva cerca de 1 minuto.
