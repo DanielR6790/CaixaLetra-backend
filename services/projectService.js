@@ -9,7 +9,7 @@ const LIST_COLUMNS = 'id, name, description, board_theme, created_at, updated_at
 const FULL_COLUMNS = `${LIST_COLUMNS}, viewport`;
 
 // Converte a linha do banco para o formato usado pelo frontend
-function toDto(row) {
+export function toDto(row) {
   const dto = {
     id: row.id,
     name: row.name,

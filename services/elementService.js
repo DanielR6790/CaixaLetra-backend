@@ -4,7 +4,7 @@
 import { AppError } from '../utils/AppError.js';
 import { assertNoError } from '../utils/db.js';
 import { assertProjectExists } from './projectGuard.js';
-import { removeBoardImages } from './storageCleanup.js';
+import { collectOrphanBoardImages, removeBoardImages } from './storageCleanup.js';
 
 const COLUMNS = 'id, type, x, y, width, height, z_index, data';
 const PAGE_SIZE = 1000; // limite de linhas por consulta do Supabase
@@ -99,26 +99,25 @@ export async function syncElements(supabase, userId, projectId, { upsert, remove
   }
 
   if (removeIds.length > 0) {
-    // Guarda os arquivos das imagens que serão apagadas
-    const { data: doomed, error: doomedError } = await supabase
-      .from('board_elements')
-      .select('id, data')
-      .eq('project_id', projectId)
-      .eq('type', 'image')
-      .in('id', removeIds);
-    assertNoError(doomedError, 'Não foi possível salvar o quadro.');
-
-    // As conexões ligadas a estes elementos são apagadas pelo banco (ON DELETE CASCADE)
+    // As conexões ligadas a estes elementos são apagadas pelo banco (ON DELETE CASCADE).
+    // Os arquivos de imagem NÃO são apagados aqui: a exclusão ainda pode ser desfeita no
+    // quadro. Os que ficarem sem uso são limpos por cleanupOrphanImages, ao abrir o quadro.
     const { error } = await supabase
       .from('board_elements')
       .delete()
       .eq('project_id', projectId)
       .in('id', removeIds);
     assertNoError(error, 'Não foi possível salvar o quadro.');
-
-    const paths = doomed.map((row) => row.data?.storagePath).filter(Boolean);
-    await removeBoardImages(supabase, paths);
   }
 
   return { saved: elements.length, removed: removeIds.length };
+}
+
+// Apaga do Storage as imagens do projeto que nenhum elemento usa mais.
+export async function cleanupOrphanImages(supabase, projectId, candidatePaths = []) {
+  await assertProjectExists(supabase, projectId);
+
+  const paths = await collectOrphanBoardImages(supabase, projectId, { paths: candidatePaths });
+  if (paths.length > 0) await removeBoardImages(supabase, paths);
+  return { removed: paths.length };
 }

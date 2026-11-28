@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
 import { limitArrays } from '../middleware/limitArrays.js';
-import { list, sync } from '../controllers/elementController.js';
+import { cleanup, list, sync } from '../controllers/elementController.js';
 
 // mergeParams: recebe o ":id" do projeto definido em routes/index.js
 const router = Router({ mergeParams: true });
@@ -41,18 +41,20 @@ const textData = z.object({
   italic: z.boolean().default(false),
 });
 
+const storagePathSchema = z
+  .string()
+  .regex(
+    /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif)$/i,
+    'Caminho da imagem inválido.'
+  );
+
 // Dados de uma imagem: endereço público + caminho do arquivo no Storage
 const imageData = z.object({
   url: z
     .string()
     .max(2000, 'Endereço da imagem muito longo.')
     .refine((value) => /^https?:\/\//i.test(value), 'Endereço da imagem inválido.'),
-  storagePath: z
-    .string()
-    .regex(
-      /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp|gif)$/i,
-      'Caminho da imagem inválido.'
-    ),
+  storagePath: storagePathSchema,
 });
 
 const elementSchema = z.discriminatedUnion(
@@ -71,12 +73,25 @@ const syncBody = z.object({
   remove: z.array(z.string().uuid('ID inválido.')).max(100, 'Alterações demais de uma vez.').default([]),
 });
 
+const cleanupBody = z.preprocess(
+  (value) => (value && typeof value === 'object' ? value : {}),
+  z.object({
+    paths: z.array(storagePathSchema).max(100, 'Caminhos demais de uma vez.').default([]),
+  })
+);
+
 router.get('/', validate({ params: idParams }), list);
 router.post(
   '/sync',
   limitArrays({ upsert: 50, remove: 100 }),
   validate({ params: idParams, body: syncBody }),
   sync
+);
+router.post(
+  '/cleanup',
+  limitArrays({ paths: 100 }),
+  validate({ params: idParams, body: cleanupBody }),
+  cleanup
 );
 
 export default router;
