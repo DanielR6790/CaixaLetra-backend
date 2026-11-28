@@ -1,4 +1,4 @@
-# Backend: CaixaLetra e organização de ideias
+# Backend: CaixaLetra e quadro infinito
 
 API REST (Node.js + Express) de uma plataforma com duas partes: um catálogo pessoal de
 filmes, séries, animes e jogos (notas, reviews e listas) e um espaço de organização de
