@@ -140,6 +140,8 @@ create table public.contents (
                 check (status in ('para_consumir', 'consumido', 'avaliado')),
   consumed_at   timestamptz,
 
+  is_favorite  boolean not null default false,
+
   -- DATA DE ADIÇÃO: definida pelo banco e nunca alterada
   added_at      timestamptz not null default now(),
   updated_at    timestamptz not null default now(),

@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { env } from '../config/env.js';
 import { requireAuth } from '../middleware/auth.js';
-import { getMe, getCategories } from '../controllers/userController.js';
+import { getCategories } from '../controllers/userController.js';
+import meRoutes from './me.routes.js';
+import accountRoutes from './account.routes.js';
 import searchRoutes from './search.routes.js';
 import contentRoutes from './content.routes.js';
 import projectRoutes from './project.routes.js';
@@ -10,7 +12,16 @@ import connectionRoutes from './connection.routes.js';
 
 const router = Router();
 
-// ---- Rota pública ----
+// ---- Rotas públicas ----
+router.get('/', (req, res) => {
+  res.json({
+    name: 'API do catálogo e da organização de ideias',
+    status: 'online',
+    health: '/api/health',
+    note: 'As demais rotas exigem login e são usadas pelo site.',
+  });
+});
+
 router.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -25,7 +36,8 @@ router.get('/health', (req, res) => {
 
 // ---- Rotas privadas (exigem login) ----
 router.use(requireAuth);
-router.get('/me', getMe);
+router.use('/me', meRoutes);
+router.use('/account', accountRoutes);
 router.get('/categories', getCategories);
 router.use('/search', searchRoutes);
 router.use('/contents', contentRoutes);
